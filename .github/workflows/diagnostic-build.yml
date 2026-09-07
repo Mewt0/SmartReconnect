@@ -1,0 +1,86 @@
+name: Diagnostic build
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-wotmod:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare diagnostic build tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="0.1.0-diagnostic-${GITHUB_SHA::7}"
+          echo "SMARTRECONNECT_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+          rm -rf build
+          mkdir -p build
+          cp -r res build/
+
+          perl -i -pe "s/\{\{VERSION\}\}/$VERSION/g" \
+            build/res/scripts/client/gui/mods/smartReconnect/Config.py
+
+          META=$(<meta.xml)
+          META="${META/\{\{VERSION\}\}/$VERSION}"
+          printf '%s\n' "$META" > build/meta.xml
+
+      - name: Compile WoT mod with Python 2.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "$PWD:/work" \
+            -w /work \
+            python:2.7 \
+            python -m compileall ./build/res
+
+      - name: Verify compiled payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f build/res/scripts/client/gui/mods/mod_smartReconnect.pyc
+          test -f build/res/scripts/client/gui/mods/smartReconnect/SmartReconnect.pyc
+          test -f build/res/scripts/client/gui/mods/smartReconnect/ConnectionMonitor.pyc
+          test -f build/res/scripts/client/gui/mods/smartReconnect/ReconnectController.pyc
+          test -f build/res/scripts/client/gui/mods/smartReconnect/Config.pyc
+
+          if grep -R "{{VERSION}}" build/res build/meta.xml; then
+            echo "Unresolved version placeholder found"
+            exit 1
+          fi
+
+      - name: Package .wotmod
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUTPUT="mewt0.smartReconnect_${SMARTRECONNECT_VERSION}.wotmod"
+          cd build
+          zip -r -0 -X "$OUTPUT" res -i '*.pyc'
+          zip -r -0 -X "$OUTPUT" meta.xml
+          mv "$OUTPUT" ../
+          cd ..
+          echo "SMARTRECONNECT_ARTIFACT=$OUTPUT" >> "$GITHUB_ENV"
+
+      - name: Inspect archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -l "$SMARTRECONNECT_ARTIFACT"
+
+          if unzip -l "$SMARTRECONNECT_ARTIFACT" | grep -E '\.py($| )'; then
+            echo "Source .py file unexpectedly packaged"
+            exit 1
+          fi
+
+      - name: Upload diagnostic .wotmod
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartReconnect-diagnostic-${{ github.sha }}
+          path: ${{ env.SMARTRECONNECT_ARTIFACT }}
+          if-no-files-found: error
