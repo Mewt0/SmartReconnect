@@ -42,7 +42,7 @@ RECONNECT_REQUESTED
 
 ## False-positive protection
 
-Automatic reconnect must not fire on a brief lag spike. The detector therefore requires a continuous lag state for `LAG_GRACE_PERIOD` seconds. Any healthy sample resets the timer.
+Automatic reconnect must not fire on a brief lag spike. The detector tracks a lag episode for `LAG_GRACE_PERIOD` seconds. Three consecutive healthy samples reset the episode; a shorter GREEN blip does not. Healthy samples require a connected client, an arena period, and a finite nonnegative ping within the configured limit. An unreadable sample resets the timing window and the healthy streak, but preserves the triggered latch.
 
 The first live validation build intentionally has all network-changing actions disabled.
 

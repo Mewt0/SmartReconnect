@@ -9,6 +9,7 @@ from PlayerEvents import g_playerEvents
 
 from .Config import (
     VERSION,
+    DIAGNOSTIC_MODE,
     MANUAL_HOTKEY_ENABLED,
     AUTO_RECONNECT_ENABLED,
     POLL_INTERVAL,
@@ -37,8 +38,9 @@ class SmartReconnect(object):
         InputHandler.g_instance.onKeyUp += self._onKeyUp
 
         _logger.info(
-            '[SmartReconnect] loaded version=%s diagnostic=true autoReconnect=%s poll=%.1fs redThreshold=%.1fs loginTimeout=%.1fs wgcTimeout=%.1fs returnTimeout=%.1fs cooldown=%.1fs stableGreenSamples=%s',
+            '[SmartReconnect] loaded version=%s diagnostic=%s autoReconnect=%s poll=%.1fs redThreshold=%.1fs loginTimeout=%.1fs wgcTimeout=%.1fs returnTimeout=%.1fs cooldown=%.1fs stableGreenSamples=%s',
             VERSION,
+            str(DIAGNOSTIC_MODE),
             str(AUTO_RECONNECT_ENABLED),
             POLL_INTERVAL,
             LAG_GRACE_PERIOD,

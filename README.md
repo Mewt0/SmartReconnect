@@ -17,7 +17,7 @@ Default behavior:
 
 1. Normal connection -> monitor remains idle.
 2. Lag indicator becomes red -> start a timer.
-3. Indicator returns to normal -> reset the timer.
+3. Three consecutive valid healthy samples -> reset the timer. Unreadable samples break the healthy streak.
 4. Indicator remains red for 3 seconds -> write `WOULD RECONNECT` to `python.log`.
 5. No network action is performed in diagnostic mode.
 
@@ -84,4 +84,10 @@ A successful first test should look roughly like this:
 [SmartReconnect] WOULD RECONNECT reason=auto-lag
 ```
 
-If the indicator returns to normal before the threshold, the timer resets and no reconnect request is produced.
+Three consecutive healthy samples with a valid ping and a connected client reset the lag episode. A shorter GREEN blip does not rearm the detector. Diagnostic mode blocks both manual and automatic network actions.
+
+## Offline QA
+
+Run `python -B -m unittest discover -s tests -v` with Python 2.7 (the payload runtime); Python 3 is also supported for offline tests. Tests validate callback deadlines, avatar lifecycle integration, diagnostic guards, recovery, and timeout cleanup. They do not replace validation against actual WoT gameplay/login interfaces.
+
+The optional real reconnect path requires `DIAGNOSTIC_MODE = False`. Automatic requests additionally require `AUTO_RECONNECT_ENABLED = True`. Expected avatar teardown during a reconnect preserves the login watchdog; a failed return is bounded by timeouts.

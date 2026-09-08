@@ -96,7 +96,7 @@ class ReconnectController(object):
             )
             return False
 
-        if reason != 'manual-hotkey' and (DIAGNOSTIC_MODE or not AUTO_RECONNECT_ENABLED):
+        if DIAGNOSTIC_MODE or (reason != 'manual-hotkey' and not AUTO_RECONNECT_ENABLED):
             _logger.warning(
                 '[SmartReconnect] WOULD RECONNECT reason=%s elapsed=%s ping=%s',
                 str(reason),
@@ -117,16 +117,16 @@ class ReconnectController(object):
             self._recover('battle-entered')
 
     def onBattleExited(self):
+        # Avatar teardown is expected after our own disconnect request.
+        # Keep the login watchdog alive; timeout handles a battle that ended.
+        if self._state in (STATE_DISCONNECT_REQUESTED, STATE_LOGIN_WAIT,
+                           STATE_WGC_LOGIN_REQUESTED, STATE_WGC_LOGIN_WAIT,
+                           STATE_RETURNING_TO_GAME):
+            return
         if self.busy:
             self._abort('battle-ended')
 
     def _startAttempt(self, reason, elapsed=None, ping=None):
-        if DIAGNOSTIC_MODE:
-            _logger.warning(
-                '[SmartReconnect] reconnect path enabled in diagnostic build reason=%s',
-                str(reason)
-            )
-
         self._attemptID += 1
         self._source = reason
         self._attemptStartedAt = self._now()

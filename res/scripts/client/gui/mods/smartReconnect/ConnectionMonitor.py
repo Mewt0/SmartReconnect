@@ -1,4 +1,5 @@
 import logging
+import math
 
 import BigWorld
 import BattleReplay
@@ -83,6 +84,7 @@ class ConnectionMonitor(object):
             # An unreadable sample cannot prove a continuous RED window.
             # Keep the decision latched until GREEN or a lifecycle reset.
             self._lagSince = None
+            self._greenSamples = 0
             self._lastLoggedSecond = -1
             _logger.exception('[SmartReconnect] monitor tick failed')
         finally:
@@ -176,7 +178,8 @@ class ConnectionMonitor(object):
         if arenaPeriod is None:
             return False
         try:
-            if ping is not None and float(ping) > STABLE_GREEN_MAX_PING:
+            value = float(ping)
+            if math.isnan(value) or math.isinf(value) or value < 0 or value > STABLE_GREEN_MAX_PING:
                 return False
         except Exception:
             return False
