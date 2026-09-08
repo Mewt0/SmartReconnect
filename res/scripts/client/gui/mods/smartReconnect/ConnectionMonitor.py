@@ -6,7 +6,12 @@ import BattleReplay
 from helpers import dependency
 from skeletons.connection_mgr import IConnectionManager
 
-from .Config import POLL_INTERVAL, LAG_GRACE_PERIOD
+from .Config import (
+    POLL_INTERVAL,
+    LAG_GRACE_PERIOD,
+    STABLE_GREEN_SAMPLES,
+    STABLE_GREEN_MAX_PING,
+)
 
 _logger = logging.getLogger('SmartReconnect')
 
@@ -21,6 +26,7 @@ class ConnectionMonitor(object):
         self._lagSince = None
         self._triggered = False
         self._lastLoggedSecond = -1
+        self._greenSamples = 0
 
     def start(self):
         if self._running:
@@ -90,6 +96,7 @@ class ConnectionMonitor(object):
             return None
 
     def _handleLag(self, now, ping, connected, arenaPeriod):
+        self._greenSamples = 0
         if self._lagSince is None:
             self._lagSince = now
             self._lastLoggedSecond = -1
@@ -120,21 +127,63 @@ class ConnectionMonitor(object):
                 str(connected),
                 str(arenaPeriod)
             )
-            self._reconnectCallback('auto-lag', elapsed, ping)
+            if connected is True:
+                self._reconnectCallback('auto-lag', elapsed, ping)
+            else:
+                _logger.warning(
+                    '[SmartReconnect] auto reconnect skipped; connection manager already disconnected connected=%s',
+                    str(connected)
+                )
 
     def _handleHealthy(self, ping, connected, arenaPeriod):
-        if self._lagSince is not None:
+        if self._lagSince is None and not self._triggered:
+            self._greenSamples = 0
+            return
+
+        if self._isStableGreenSample(ping, connected, arenaPeriod):
+            self._greenSamples += 1
+        else:
+            self._greenSamples = 0
+
+        if self._lagSince is None:
+            elapsed = 0.0
+        else:
             elapsed = max(0.0, BigWorld.timeExact() - self._lagSince)
+        if self._greenSamples < STABLE_GREEN_SAMPLES:
             _logger.info(
-                '[SmartReconnect] GREEN recovered after %.1fs ping=%s connected=%s arenaPeriod=%s; timer reset',
+                '[SmartReconnect] GREEN candidate sample=%d/%d after %.1fs ping=%s connected=%s arenaPeriod=%s',
+                self._greenSamples,
+                STABLE_GREEN_SAMPLES,
                 elapsed,
                 str(ping),
                 str(connected),
                 str(arenaPeriod)
             )
+            return
+
+        _logger.info(
+            '[SmartReconnect] STABLE_GREEN recovered after %.1fs ping=%s connected=%s arenaPeriod=%s; timer reset',
+            elapsed,
+            str(ping),
+            str(connected),
+            str(arenaPeriod)
+        )
         self._resetLagState()
+
+    def _isStableGreenSample(self, ping, connected, arenaPeriod):
+        if connected is not True:
+            return False
+        if arenaPeriod is None:
+            return False
+        try:
+            if ping is not None and float(ping) > STABLE_GREEN_MAX_PING:
+                return False
+        except Exception:
+            return False
+        return True
 
     def _resetLagState(self):
         self._lagSince = None
         self._triggered = False
         self._lastLoggedSecond = -1
+        self._greenSamples = 0

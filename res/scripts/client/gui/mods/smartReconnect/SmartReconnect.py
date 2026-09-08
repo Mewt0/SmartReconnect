@@ -7,7 +7,18 @@ import Keys
 from gui import InputHandler
 from PlayerEvents import g_playerEvents
 
-from .Config import VERSION, MANUAL_HOTKEY_ENABLED
+from .Config import (
+    VERSION,
+    MANUAL_HOTKEY_ENABLED,
+    AUTO_RECONNECT_ENABLED,
+    POLL_INTERVAL,
+    LAG_GRACE_PERIOD,
+    LOGIN_WAIT_TIMEOUT,
+    WGC_LOGIN_WAIT_TIMEOUT,
+    RETURN_TO_GAME_TIMEOUT,
+    COOLDOWN_AFTER_FAILURE,
+    STABLE_GREEN_SAMPLES,
+)
 from .ConnectionMonitor import ConnectionMonitor
 from .ReconnectController import ReconnectController
 
@@ -25,7 +36,18 @@ class SmartReconnect(object):
         g_playerEvents.onAvatarBecomeNonPlayer += self._onAvatarBecomeNonPlayer
         InputHandler.g_instance.onKeyUp += self._onKeyUp
 
-        _logger.info('[SmartReconnect] loaded version=%s diagnostic=true', VERSION)
+        _logger.info(
+            '[SmartReconnect] loaded version=%s diagnostic=true autoReconnect=%s poll=%.1fs redThreshold=%.1fs loginTimeout=%.1fs wgcTimeout=%.1fs returnTimeout=%.1fs cooldown=%.1fs stableGreenSamples=%s',
+            VERSION,
+            str(AUTO_RECONNECT_ENABLED),
+            POLL_INTERVAL,
+            LAG_GRACE_PERIOD,
+            LOGIN_WAIT_TIMEOUT,
+            WGC_LOGIN_WAIT_TIMEOUT,
+            RETURN_TO_GAME_TIMEOUT,
+            COOLDOWN_AFTER_FAILURE,
+            str(STABLE_GREEN_SAMPLES)
+        )
 
         # Defensive support for script reloads while already inside an arena.
         player = BigWorld.player()
@@ -55,12 +77,13 @@ class SmartReconnect(object):
         if BattleReplay.isPlaying():
             return
         self._inBattle = True
+        self._controller.onBattleEntered()
         self._monitor.start()
 
     def _onAvatarBecomeNonPlayer(self, *args, **kwargs):
         self._inBattle = False
         self._monitor.stop()
-        self._controller.clearBusy('avatar-non-player')
+        self._controller.onBattleExited()
 
     def _onReconnectRequested(self, reason, elapsed=None, ping=None):
         self._controller.requestReconnect(reason, elapsed, ping)
