@@ -74,6 +74,10 @@ class ConnectionMonitor(object):
             else:
                 self._handleHealthy(ping, connected, arenaPeriod)
         except Exception:
+            # An unreadable sample cannot prove a continuous RED window.
+            # Keep the decision latched until GREEN or a lifecycle reset.
+            self._lagSince = None
+            self._lastLoggedSecond = -1
             _logger.exception('[SmartReconnect] monitor tick failed')
         finally:
             self._schedule()
@@ -88,7 +92,6 @@ class ConnectionMonitor(object):
     def _handleLag(self, now, ping, connected, arenaPeriod):
         if self._lagSince is None:
             self._lagSince = now
-            self._triggered = False
             self._lastLoggedSecond = -1
             _logger.warning(
                 '[SmartReconnect] RED started ping=%s connected=%s arenaPeriod=%s',

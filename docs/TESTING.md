@@ -8,7 +8,16 @@ v0.1 must never intentionally disconnect the client. Its only job is to prove th
 
 Do not enable real reconnect until the acceptance criteria below are met on the exact target WoT client build.
 
-## Expected log fields
+## Offline regression checks
+
+Run `python -m unittest discover -s tests -v` from the repository root.
+The CI workflow runs these checks with Python 2.7 before packaging.
+They simulate RED/GREEN samples, unreadable samples, replay, missing arena,
+disconnected state and monitor lifecycle. An unreadable sample resets the
+continuous RED timer because continuity cannot be established across it.
+These checks do not validate native client APIs or satisfy the live gate in #2.
+
+## Diagnostic log fields
 
 During a lag episode, `python.log` should include:
 

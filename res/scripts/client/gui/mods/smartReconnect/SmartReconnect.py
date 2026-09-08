@@ -34,6 +34,7 @@ class SmartReconnect(object):
 
     def dispose(self):
         self._monitor.stop()
+        self._controller.clearBusy('dispose')
 
         try:
             g_playerEvents.onAvatarBecomePlayer -= self._onAvatarBecomePlayer
@@ -59,6 +60,7 @@ class SmartReconnect(object):
     def _onAvatarBecomeNonPlayer(self, *args, **kwargs):
         self._inBattle = False
         self._monitor.stop()
+        self._controller.clearBusy('avatar-non-player')
 
     def _onReconnectRequested(self, reason, elapsed=None, ping=None):
         self._controller.requestReconnect(reason, elapsed, ping)
