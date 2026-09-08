@@ -12,6 +12,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Test diagnostic monitor with Python 2.7
+        shell: bash
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work python:2.7 \
+            python -m unittest discover -s tests -v
+
       - name: Prepare diagnostic build tree
         shell: bash
         run: |
