@@ -1,6 +1,8 @@
 name: Diagnostic build
 
 on:
+  push:
+    branches: ["diagnostic/**"]
   pull_request:
   workflow_dispatch:
 
@@ -17,6 +19,12 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/work" -w /work python:2.7 \
             python -m unittest discover -s tests -v
+
+      - name: Verify timing mutations are rejected
+        shell: bash
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work python:2.7 \
+            python -B tests/check_mutations.py
 
       - name: Prepare diagnostic build tree
         shell: bash
